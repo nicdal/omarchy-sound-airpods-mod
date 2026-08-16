@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 1,
+  "id": "community.airpods",
+  "name": "AirPods",
+  "version": "1.0.0",
+  "author": "Omarchy community",
+  "description": "AirPods battery levels and listening-mode switching via MagicPodsCore",
+  "kinds": [
+    "bar-widget"
+  ],
+  "entryPoints": {
+    "barWidget": "Panel.qml"
+  },
+  "barWidget": {
+    "displayName": "AirPods",
+    "description": "AirPods battery levels and listening-mode switching",
+    "category": "Audio",
+    "allowMultiple": false
+  }
+}
