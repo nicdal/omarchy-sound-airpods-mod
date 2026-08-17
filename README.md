@@ -29,12 +29,34 @@ fork: those upstream improvements don't arrive on their own.
 ## Requirements
 
 - Omarchy 4.0 or newer (the Quickshell-based `omarchy-shell`)
-- `magicpodscore` running and paired with your headphones:
+- Python 3 (already present on Omarchy)
+- `magicpodscore` running. There's nothing to set up beyond that: it reads your
+  headphones from bluez over D-Bus (`org.bluez.Device1`, `Battery1`), so pairing
+  them the ordinary way — as you would to use them as an audio output at all — is
+  all it needs. They do have to be connected, not merely paired, for anything to
+  show.
+
+  The package ships no systemd unit, so put one at
+  `~/.config/systemd/user/magicpodscore.service`:
+
+  ```ini
+  [Unit]
+  Description=MagicPodsCore - AirPods battery and controls
+  After=bluetooth.target
+
+  [Service]
+  ExecStart=/usr/bin/magicpodscore
+  Restart=on-failure
+  RestartSec=5
+
+  [Install]
+  WantedBy=default.target
+  ```
+
   ```bash
+  systemctl --user daemon-reload
   systemctl --user enable --now magicpodscore
   ```
-  The package ships no unit of its own, so you'll need to supply one.
-- Python 3 (already present on Omarchy)
 
 ## Install
 
