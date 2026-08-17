@@ -58,6 +58,28 @@ Item {
   // present. Toggle with: omarchy bar set community.sound-airpods-mod demo true --json
   property bool demo: false
 
+  // Process only reads `command` when it starts, so switching between the live
+  // and synthetic sources has to relaunch it -- otherwise the flag changes and
+  // the old source keeps streaming until the next shell restart. Clear the state
+  // at the same time so the outgoing device can't linger behind the new one.
+  onDemoChanged: {
+    connected = false
+    deviceName = ""
+    address = ""
+    batteryComponents = []
+    ancOptions = 0
+    ancSelected = 0
+    pendingAnc = 0
+    restartStream()
+  }
+
+  function restartStream() {
+    stateProc.running = false
+    // Re-arm on the next tick: setting it back within this one is coalesced into
+    // no change at all, and the process would never come back.
+    Qt.callLater(function() { stateProc.running = true })
+  }
+
   // airpods.py lives next to this file; Process needs a path, not a URL.
   readonly property string scriptPath: {
     const url = Qt.resolvedUrl("airpods.py").toString()

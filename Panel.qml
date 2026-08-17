@@ -100,6 +100,13 @@ Panel {
   // that bluez puts in the node name (bluez_output.90_62_3F_9A_02_59.1).
   function isPodsNode(node) {
     if (!podsConnected || !node) return false
+
+    // The demo device's address is synthetic and matches no real sink, so pin it
+    // to whatever the current output is. Without this the demo device would be
+    // connected but attached to nothing, and the sections it exists to preview
+    // would never appear.
+    if (pods && pods.demo) return !!root.sink && node.id === root.sink.id
+
     var address = pods ? String(pods.address || "") : ""
     if (address === "") return false
     var needle = address.replace(/:/g, "_").toLowerCase()
@@ -122,6 +129,15 @@ Panel {
     return out
   }
 
+  // In demo mode the row is pinned to whatever output is selected, so label it
+  // with the synthetic device instead of the real sink -- otherwise the preview
+  // claims to be whichever hardware happens to be plugged in.
+  function podsRowLabel(node) {
+    if (pods && pods.demo && isPodsNode(node) && String(pods.deviceName) !== "")
+      return pods.deviceName
+    return nodeLabel(node)
+  }
+
   // "82% 79% 45%" for Pro/regular AirPods, "86%" for a Max that reports a
   // single cell. Empty when the device isn't the AirPods.
   function podsBatterySummary(node) {
@@ -131,9 +147,10 @@ Panel {
     for (var i = 0; i < components.length; i++) {
       var component = components[i]
       if (component.pct === undefined || component.pct === null) continue
-      parts.push(component.pct + "%" + (component.charging ? "󱐋" : ""))
+      parts.push(component.label + " " + component.pct + "%"
+                 + (component.charging ? " 󱐋" : ""))
     }
-    return parts.join(" ")
+    return parts.join("   ")
   }
   // ---- end AirPods mod ------------------------------------------------------
 
@@ -1324,52 +1341,61 @@ Panel {
     foreground: root.bar.foreground
     fill: root.hoverFill
     currentFill: root.selectedFill
-    implicitHeight: sinkInner.implicitHeight + Style.spacing.xl
+    // AirPods mod: was sinkInner alone; now a column, so the battery readings can
+    // sit under the device name the way macOS's output list does.
+    implicitHeight: sinkBody.implicitHeight + Style.spacing.xl
 
-    Row {
-      id: sinkInner
+    Column {
+      id: sinkBody
       anchors.left: parent.left
       anchors.right: parent.right
       anchors.verticalCenter: parent.verticalCenter
       anchors.leftMargin: Style.space(6)
       anchors.rightMargin: Style.space(6)
-      spacing: Style.space(8)
+      spacing: Style.space(1)
 
-      Text {
-        text: root.sinkGlyph(sinkRow.node)
-        color: root.bar.foreground
-        font.family: root.bar.fontFamily
-        font.pixelSize: Style.font.title
-        width: Style.space(22)
-        horizontalAlignment: Text.AlignHCenter
-        anchors.verticalCenter: parent.verticalCenter
+      Row {
+        id: sinkInner
+        width: parent.width
+        spacing: Style.space(8)
+
+        Text {
+          text: root.sinkGlyph(sinkRow.node)
+          color: root.bar.foreground
+          font.family: root.bar.fontFamily
+          font.pixelSize: Style.font.title
+          width: Style.space(22)
+          horizontalAlignment: Text.AlignHCenter
+          anchors.verticalCenter: parent.verticalCenter
+        }
+
+        Text {
+          // AirPods mod: podsRowLabel is nodeLabel everywhere except demo mode.
+          text: root.podsRowLabel(sinkRow.node)
+          color: root.bar.foreground
+          font.family: root.bar.fontFamily
+          font.pixelSize: Style.font.body
+          font.bold: sinkRow.isActive
+          elide: Text.ElideRight
+          width: parent.width - Style.space(22) - Style.space(8)
+          anchors.verticalCenter: parent.verticalCenter
+        }
       }
 
-      Text {
-        text: root.nodeLabel(sinkRow.node)
-        color: root.bar.foreground
-        font.family: root.bar.fontFamily
-        font.pixelSize: Style.font.body
-        font.bold: sinkRow.isActive
-        elide: Text.ElideRight
-        // AirPods mod: give the battery reading its share of the row.
-        width: parent.width - Style.space(22) - Style.space(8)
-               - (sinkBattery.visible ? sinkBattery.implicitWidth + Style.space(8) : 0)
-        anchors.verticalCenter: parent.verticalCenter
-      }
-
-      // AirPods mod: battery for the AirPods row, the way macOS shows it under
-      // the device name. Left/Right/Case on Pro and regular AirPods, a single
-      // reading on a Max. Nothing at all for every other output.
+      // AirPods mod: a subline under the device name, as macOS shows the bud
+      // readings. Each one is named -- macOS leans on two identical bud icons,
+      // which doesn't say which reading is which.
       Text {
         id: sinkBattery
         text: root.podsBatterySummary(sinkRow.node)
         visible: text !== ""
-        color: Qt.darker(root.bar.foreground, 1.4)
+        color: Qt.darker(root.bar.foreground, 1.5)
         font.family: root.bar.fontFamily
         font.pixelSize: Style.font.caption
-        font.bold: true
-        anchors.verticalCenter: parent.verticalCenter
+        // Indent to the device name, not the glyph.
+        leftPadding: Style.space(22) + Style.space(8)
+        width: parent.width
+        elide: Text.ElideRight
       }
     }
 
