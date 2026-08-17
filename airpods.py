@@ -32,6 +32,13 @@ ANC_NOISE_CANCELLATION = 16
 # status == 2 means "this component reported a real reading".
 STATUS_PRESENT = 2
 
+# How long to keep showing the last known device state while we're unable to
+# talk to magicpodscore, and how long to wait between reconnect attempts.
+# The grace window has to comfortably exceed the delay, or a single hang-up
+# would still blank the widget before the next attempt lands.
+RECONNECT_DELAY = 2
+RECONNECT_GRACE = 20
+
 
 def decode_frame(data):
     length = data[1] & 0x7F
@@ -136,11 +143,17 @@ def emit(state, last):
 
 def watch():
     last = None
+    # MagicPodsCore hangs up on idle clients, so a dropped socket says nothing
+    # about whether the headphones are still there. Reporting "disconnected" on
+    # every drop made the widget flap in and out of the bar. Reconnect quietly
+    # and only give up on the device once reconnecting has failed for this long.
+    last_good = None
     while True:
         try:
             s = ws_connect()
             s.settimeout(30)
             data = ws_request(s, {"method": "GetAll"})
+            last_good = time.monotonic()
             last = emit(build_state(data), last)
 
             while True:
@@ -158,15 +171,21 @@ def watch():
                 except socket.timeout:
                     # Periodic re-query catches anything the broadcasts missed.
                     data = ws_request(s, {"method": "GetAll"})
+                    last_good = time.monotonic()
                     last = emit(build_state(data), last)
 
             s.close()
         except Exception:
-            # magicpodscore down or the connection dropped -- show nothing and retry.
+            # magicpodscore down, or it hung up on us. Either way the device's
+            # own state is unknown rather than known-absent.
             pass
 
-        last = emit(DISCONNECTED, last)
-        time.sleep(5)
+        # Hold the last known state through a brief outage. Only once we've been
+        # unable to read the daemon for RECONNECT_GRACE do we admit we don't know
+        # and blank the widget.
+        if last_good is None or (time.monotonic() - last_good) > RECONNECT_GRACE:
+            last = emit(DISCONNECTED, last)
+        time.sleep(RECONNECT_DELAY)
 
 
 def set_anc(mode):

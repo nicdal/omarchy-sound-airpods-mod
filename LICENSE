@@ -1,6 +1,12 @@
 MIT License
 
 Copyright (c) 2026 omarchy-airpods contributors
+Copyright (c) 2026 Omarchy contributors (Panel.qml, Model.js)
+
+Panel.qml and Model.js are derived from the omarchy.audio plugin in Omarchy
+(https://omarchy.org/), which is MIT licensed. The Omarchy shell has no API for
+extending another plugin's panel, so those files are vendored and modified here.
+Sections added by this plugin are marked "AirPods mod".
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

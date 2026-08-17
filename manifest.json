@@ -1,19 +1,22 @@
 {
   "schemaVersion": 1,
-  "id": "community.airpods",
-  "name": "AirPods",
-  "version": "1.0.0",
+  "id": "community.sound-airpods-mod",
+  "name": "Sound (AirPods mod)",
+  "version": "2.0.0",
   "author": "Omarchy community",
-  "description": "AirPods battery levels and listening-mode switching via MagicPodsCore",
+  "description": "Omarchy's Sound panel with AirPods battery levels and listening-mode switching",
   "kinds": [
+    "service",
     "bar-widget"
   ],
+  "keepLoaded": true,
   "entryPoints": {
+    "service": "Service.qml",
     "barWidget": "Panel.qml"
   },
   "barWidget": {
-    "displayName": "AirPods",
-    "description": "AirPods battery levels and listening-mode switching",
+    "displayName": "Sound (AirPods mod)",
+    "description": "Volume, output picker and per-app mixer, plus AirPods battery and listening modes",
     "category": "Audio",
     "allowMultiple": false
   }
