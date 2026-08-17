@@ -50,6 +50,15 @@ Panel {
   readonly property bool barShowsBattery: showBattery && podsConnected
                                           && pods && pods.lowestBattery >= 0
 
+  // Tell the bar how long the open-panel underline should be, so it spans the
+  // glyph *and* the reading rather than defaulting to 55% of the slot. Same hook
+  // omarchy.power uses for its optional percentage. Zero means "use the
+  // default", which is what we want for the icon-only button and on a vertical
+  // bar, where the row isn't the axis the mark runs along.
+  readonly property real openPanelIndicatorWidth: barShowsBattery && !(bar && bar.vertical)
+    ? content.implicitWidth
+    : 0
+
   // Shared by both bar buttons so the click and scroll behaviour can't drift.
   function barPressed(b) {
     if (b === Qt.RightButton) toggleAllMuted()
