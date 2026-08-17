@@ -83,11 +83,17 @@ separator.
 
 ## Options
 
-Set with `omarchy bar set`, stored in `~/.config/omarchy/shell.json`:
+**Show battery in bar** is a switch in the panel itself, under the output list.
+It's off by default, so the bar is the stock icon alone; flip it on and the icon
+gains the reading. The choice is written to `~/.config/omarchy/shell.json`, so it
+survives a shell restart and a reboot.
+
+The reading is the lowest bud, ignoring the case — the case isn't what runs out
+mid-call. A bolt marks charging.
+
+Both options can also be set from the command line:
 
 ```bash
-# Show the battery reading next to the bar icon. Off by default, so the bar
-# looks exactly like the stock Sound widget.
 omarchy bar set community.sound-airpods-mod showBattery true --json
 
 # Point the panel at a synthetic device, for working on it with no headphones
@@ -95,8 +101,13 @@ omarchy bar set community.sound-airpods-mod showBattery true --json
 omarchy bar set community.sound-airpods-mod demo true --json
 ```
 
-`showBattery` reports the lowest bud, ignoring the case — the case isn't what
-runs out mid-call.
+With the battery hidden the bar uses Omarchy's standard `BarIconButton`, which
+draws one optically-centred glyph in a fixed icon slot. Showing the reading
+swaps in a button that sizes itself to its contents instead — text in the fixed
+slot would be squeezed against the neighbouring widget.
+
+The added rows are mouse-driven: they stay out of the panel's keyboard cursor
+model, which is indexed against the audio device lists.
 
 ## How it works
 

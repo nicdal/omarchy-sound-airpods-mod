@@ -44,11 +44,47 @@ Panel {
   // construction.
   onPodsChanged: if (pods) pods.demo = demoMode
 
-  readonly property string podsBarLabel: {
-    if (!showBattery || !podsConnected) return ""
-    var pct = pods ? pods.lowestBattery : -1
-    if (pct < 0) return ""
-    return " " + pct + "%" + (pods && pods.anyCharging ? "󱐋" : "")
+  // Whether the bar shows the reading as well as the glyph. BarIconButton draws
+  // into a fixed icon-sized slot, so it can't hold a label -- when this is on the
+  // bar swaps to a button that sizes itself to its contents instead.
+  readonly property bool barShowsBattery: showBattery && podsConnected
+                                          && pods && pods.lowestBattery >= 0
+
+  // Shared by both bar buttons so the click and scroll behaviour can't drift.
+  function barPressed(b) {
+    if (b === Qt.RightButton) toggleAllMuted()
+    else toggle()
+  }
+
+  function barWheel(delta) {
+    if (!hasOutput) return
+    var wheel = Util.wheelSteps(wheelAccumulator, delta)
+    wheelAccumulator = wheel.remainder
+    if (wheel.steps === 0) return
+    showVolumeOsd(setOutputVolume(outputVolume + wheel.steps * 0.05))
+  }
+
+  // Persist an option to shell.json so it survives a shell restart and a reboot.
+  // Applied locally first so the bar changes on the click itself; the write comes
+  // back through the bar as the same value. Mirrors omarchy.clock's cycleFormat.
+  function persistSetting(name, value) {
+    var entry = { id: root.moduleName }
+    for (var key in root.settings) if (key !== "id") entry[key] = root.settings[key]
+    entry[name] = value
+
+    root.settings = entry
+
+    var shell = root.bar ? root.bar.shell : null
+    if (!shell) return
+
+    if (typeof shell.updateEntryInline === "function") {
+      shell.updateEntryInline(root.moduleName, entry)
+    } else if (shell.pluginRegistry && typeof shell.pluginRegistry.setBarWidget === "function") {
+      // Fallback: the same call `omarchy bar set` makes. Without this a missing
+      // updateEntryInline would leave the toggle working until the next restart
+      // and then silently forget, which is worse than not persisting at all.
+      shell.pluginRegistry.setBarWidget(root.moduleName, name, value, {})
+    }
   }
 
   // True when this PipeWire node is the connected AirPods, matched on the MAC
@@ -649,8 +685,9 @@ Panel {
     return Model.streamRepresentsPlayer(node, player, mprisPlayers, displayAudioStreams)
   }
 
-  implicitWidth: button.implicitWidth
-  implicitHeight: button.implicitHeight
+  // AirPods mod: follow whichever bar button is showing.
+  implicitWidth: barShowsBattery ? batteryButton.implicitWidth : button.implicitWidth
+  implicitHeight: barShowsBattery ? batteryButton.implicitHeight : button.implicitHeight
 
   PwObjectTracker { objects: root.candidateSinks }
   PwObjectTracker { objects: root.candidateSources }
@@ -706,31 +743,68 @@ Panel {
     onTriggered: root.refreshDisplayAudioModels()
   }
 
+  // The default bar button, untouched from the stock audio widget: one glyph,
+  // optically centred in the standard icon slot.
   BarIconButton {
     id: button
+    visible: !root.barShowsBattery
     anchors.fill: parent
     bar: root.bar
-    // AirPods mod: podsBarLabel is "" unless showBattery is on and the AirPods
-    // are connected, so the default bar is the stock speaker glyph alone.
-    text: root.outputIcon() + root.podsBarLabel
-    onPressed: function(b) {
-      if (b === Qt.RightButton) root.toggleAllMuted()
-      else root.toggle()
-    }
+    text: root.outputIcon()
+    onPressed: function(b) { root.barPressed(b) }
+    onWheelMoved: function(delta) { root.barWheel(delta) }
+  }
 
-    onWheelMoved: function(delta) {
-      if (!root.hasOutput) return
-      var wheel = Util.wheelSteps(root.wheelAccumulator, delta)
-      root.wheelAccumulator = wheel.remainder
-      if (wheel.steps === 0) return
-      var volume = root.setOutputVolume(root.outputVolume + wheel.steps * 0.05)
-      root.showVolumeOsd(volume)
+  // AirPods mod: glyph plus battery reading, used only when showBattery is on.
+  // fixedWidth tracks the row so the reading gets real space instead of being
+  // squeezed into the icon slot and crowding the next widget along.
+  WidgetButton {
+    id: batteryButton
+    visible: root.barShowsBattery
+    anchors.fill: parent
+    bar: root.bar
+    labelVisible: false
+    hasVisualContent: true
+    horizontalMargin: 6
+    fixedWidth: root.bar && root.bar.vertical
+      ? -1
+      : content.implicitWidth + Style.spaceReal(horizontalMargin) * 2
+    tooltipText: root.pods ? root.pods.deviceName : ""
+    onPressed: function(b) { root.barPressed(b) }
+    onWheelMoved: function(delta) { root.barWheel(delta) }
+
+    Row {
+      id: content
+      anchors.centerIn: parent
+      spacing: Style.space(5)
+
+      // The same glyph the stock button would show for this output.
+      Text {
+        text: root.outputIcon()
+        color: batteryButton.foreground
+        font.family: batteryButton.fontFamily
+        font.pixelSize: Style.bar.iconFont
+        opacity: root.outputMuted ? 0.5 : 1.0
+        anchors.verticalCenter: parent.verticalCenter
+      }
+
+      // Label size rather than icon size, so the glyph still matches every
+      // other bar icon while the percentage reads as text.
+      Text {
+        text: (root.pods ? root.pods.lowestBattery : 0) + "%"
+              + (root.pods && root.pods.anyCharging ? " 󰢝" : "")
+        color: batteryButton.foreground
+        font.family: batteryButton.fontFamily
+        font.pixelSize: Style.font.caption
+        anchors.verticalCenter: parent.verticalCenter
+      }
     }
   }
 
   KeyboardPanel {
     id: panel
-    anchorItem: button
+    // AirPods mod: anchor to the button that's actually visible.
+    anchorItem: root.barShowsBattery ? batteryButton : button
     owner: root
     bar: root.bar
     open: root.opened
@@ -937,6 +1011,38 @@ Panel {
                 width: panelColumn.width
                 node: modelData
                 rowIndex: index
+              }
+            }
+
+            // AirPods mod: opt in to the bar reading, right under the row that
+            // shows it. Written to shell.json, so it survives a reboot.
+            Item {
+              width: parent.width
+              visible: root.podsConnected
+              implicitHeight: Math.max(barBatteryLabel.implicitHeight,
+                                       barBatterySwitch.implicitHeight)
+
+              Text {
+                id: barBatteryLabel
+                text: "Show battery in bar"
+                color: Qt.darker(root.bar.foreground, 1.4)
+                font.family: root.bar.fontFamily
+                font.pixelSize: Style.font.caption
+                anchors.left: parent.left
+                anchors.leftMargin: Style.space(6)
+                anchors.verticalCenter: parent.verticalCenter
+              }
+
+              // ToggleSwitch doesn't flip itself; `checked` follows the stored
+              // setting, so the switch can only ever show what's persisted.
+              ToggleSwitch {
+                id: barBatterySwitch
+                checked: root.showBattery
+                foreground: root.bar.foreground
+                anchors.right: parent.right
+                anchors.rightMargin: Style.space(6)
+                anchors.verticalCenter: parent.verticalCenter
+                onToggled: root.persistSetting("showBattery", !root.showBattery)
               }
             }
           }
