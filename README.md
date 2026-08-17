@@ -17,10 +17,16 @@ Battery and listening modes come from
 
 You need Omarchy 4.0+, Python 3 (already there), and `magicpodscore`.
 
-**1. The backend.** `magicpodscore` reads your headphones from bluez over D-Bus,
-so there's no pairing step of its own — pair them the ordinary way and it finds
-them. The package ships no systemd unit, so add
-`~/.config/systemd/user/magicpodscore.service`:
+**1. The backend.** Install `magicpodscore` from the Omarchy menu: **Super + Space
+→ Install → AUR**, then search for it. (`magicpods` in the same results is a
+separate Qt app you don't need — this plugin talks to the daemon directly.)
+
+It reads your headphones from bluez over D-Bus, so there's no pairing step of its
+own: pair them the ordinary way and it finds them.
+
+The package is only the binary — no unit, no D-Bus activation, no autostart — so
+installing it doesn't start it and nothing brings it back after a reboot. Give it
+a `~/.config/systemd/user/magicpodscore.service`:
 
 ```ini
 [Unit]
@@ -37,7 +43,6 @@ WantedBy=default.target
 ```
 
 ```bash
-omarchy pkg aur add magicpodscore
 systemctl --user daemon-reload
 systemctl --user enable --now magicpodscore
 ```
