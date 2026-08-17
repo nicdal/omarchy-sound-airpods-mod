@@ -109,6 +109,12 @@ slot would be squeezed against the neighbouring widget.
 The added rows are mouse-driven: they stay out of the panel's keyboard cursor
 model, which is indexed against the audio device lists.
 
+The stock panel caps its height at 560, which the extra sections overflow —
+enough to make it scroll. While they're on show the cap is dropped, leaving
+`availableCardHeight` (the screen, less the bar and margins) as the only limit:
+a tall display shows the whole panel, a short one still scrolls. With no
+headphones connected the stock cap applies unchanged.
+
 ## How it works
 
 `airpods.py` holds one WebSocket to MagicPodsCore on `127.0.0.1:2020`, reduces

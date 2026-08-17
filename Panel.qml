@@ -819,7 +819,14 @@ Panel {
     open: root.opened
     focusTarget: keyCatcher
     contentWidth: panel.fittedContentWidth(Style.space(380))
-    contentHeight: panel.fittedContentHeight(panelColumn.implicitHeight, Style.space(560))
+    // AirPods mod: the stock 560 ceiling is shorter than this panel gets once the
+    // battery toggle and Noise Control are in it, so it scrolled. Drop the cap
+    // while they're on show and let availableCardHeight be the only limit -- the
+    // screen height minus the bar and margins -- so a tall display shows the
+    // whole panel and a short one still scrolls. Stock cap when they're hidden,
+    // so a machine with no AirPods behaves exactly as before.
+    contentHeight: panel.fittedContentHeight(panelColumn.implicitHeight,
+                                             root.podsConnected ? 0 : Style.space(560))
 
     PanelKeyCatcher {
       id: keyCatcher
