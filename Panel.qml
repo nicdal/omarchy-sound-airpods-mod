@@ -35,14 +35,8 @@ Panel {
   //   omarchy bar set community.sound-airpods-mod showBattery true --json
   readonly property bool showBattery: setting("showBattery", false) === true
 
-  // Forwarded to the service so `omarchy bar set ... demo true` still works.
-  readonly property bool demoMode: setting("demo", false) === true
-  onDemoModeChanged: if (pods) pods.demo = demoMode
-
-  // The service resolves a moment after the widget is built, once the shell has
-  // injected `bar`, so forward the demo flag when it arrives rather than only at
-  // construction.
-  onPodsChanged: if (pods) pods.demo = demoMode
+  // Demo mode isn't forwarded from here: the service reads it from the shell
+  // config itself, so one widget per monitor can't fight over the value.
 
   // Whether the bar shows the reading as well as the glyph. BarIconButton draws
   // into a fixed icon-sized slot, so it can't hold a label -- when this is on the

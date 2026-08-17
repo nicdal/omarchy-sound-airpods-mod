@@ -54,9 +54,29 @@ Item {
     return false
   }
 
+  // Our own entry in the bar layout. Read straight from the shell config, the way
+  // omarchy.idle's service reads shell.shellConfig.idle, rather than having the
+  // widgets push settings in: the bar builds one widget per monitor, and an
+  // instance that loads late with stale settings would overwrite a change another
+  // had just made. One reader, no race.
+  readonly property var entrySettings: {
+    var barConfig = shell ? shell.barConfig : null
+    var layout = barConfig && barConfig.layout ? barConfig.layout : null
+    if (!layout) return ({})
+
+    var sections = ["left", "center", "right"]
+    for (var s = 0; s < sections.length; s++) {
+      var list = layout[sections[s]]
+      if (!Array.isArray(list)) continue
+      for (var i = 0; i < list.length; i++)
+        if (list[i] && list[i].id === "community.sound-airpods-mod") return list[i]
+    }
+    return ({})
+  }
+
   // Demo mode: a synthetic device so the panel can be worked on with no AirPods
   // present. Toggle with: omarchy bar set community.sound-airpods-mod demo true --json
-  property bool demo: false
+  readonly property bool demo: entrySettings.demo === true
 
   // Process only reads `command` when it starts, so switching between the live
   // and synthetic sources has to relaunch it -- otherwise the flag changes and
