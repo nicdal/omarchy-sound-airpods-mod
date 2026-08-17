@@ -39,7 +39,7 @@ fork: those upstream improvements don't arrive on their own.
 ## Install
 
 ```bash
-omarchy plugin add https://github.com/nicdal/omarchy-airpods.git --enable --yes
+omarchy plugin add https://github.com/nicdal/omarchy-sound-airpods-mod.git --enable --yes
 omarchy bar put community.sound-airpods-mod
 omarchy bar move community.sound-airpods-mod --section right
 ```
